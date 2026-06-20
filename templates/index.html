@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+
+    <title>JARVIS AI</title>
+
+    <style>
+
+        body{
+            margin:0;
+            font-family:Arial;
+            background:black;
+            color:white;
+            display:flex;
+            height:100vh;
+        }
+
+        .sidebar{
+            width:250px;
+            background:#111;
+            border-right:1px solid #333;
+            padding:20px;
+            overflow-y:auto;
+        }
+
+        .logo{
+            font-size:30px;
+            text-align:center;
+            margin-bottom:20px;
+            font-weight:bold;
+        }
+
+        .new-chat{
+            width:100%;
+            padding:15px;
+            background:#0066ff;
+            border:none;
+            border-radius:10px;
+            color:white;
+            font-size:18px;
+            cursor:pointer;
+            margin-bottom:20px;
+        }
+
+        .chat-item{
+            background:#222;
+            padding:12px;
+            border-radius:10px;
+            margin-bottom:10px;
+        }
+
+        .main{
+            flex:1;
+            display:flex;
+            flex-direction:column;
+        }
+
+        .header{
+            background:#111;
+            padding:20px;
+            text-align:center;
+            font-size:28px;
+            border-bottom:1px solid #333;
+        }
+
+        #chat-box{
+            flex:1;
+            overflow-y:auto;
+            padding:20px;
+        }
+
+        .user{
+            text-align:right;
+            margin:15px;
+        }
+
+        .bot{
+            text-align:left;
+            margin:15px;
+        }
+
+        .bubble{
+            display:inline-block;
+            padding:15px;
+            border-radius:15px;
+            max-width:70%;
+            font-size:18px;
+        }
+
+        .user .bubble{
+            background:#0066ff;
+        }
+
+        .bot .bubble{
+            background:#222;
+        }
+
+        .input-area{
+            display:flex;
+            padding:20px;
+            background:#111;
+        }
+
+        input{
+            flex:1;
+            padding:15px;
+            border:none;
+            border-radius:10px;
+            background:#222;
+            color:white;
+            font-size:18px;
+            outline:none;
+        }
+
+        button{
+            padding:15px 25px;
+            margin-left:10px;
+            border:none;
+            border-radius:10px;
+            background:#0066ff;
+            color:white;
+            font-size:18px;
+            cursor:pointer;
+        }
+
+    </style>
+
+</head>
+
+<body>
+
+<div class="sidebar">
+
+    <div class="logo">
+        🤖 JARVIS
+    </div>
+
+    <button class="new-chat" onclick="newChat()">
+        + New Chat
+    </button>
+
+    <div id="history"></div>
+
+</div>
+
+<div class="main">
+
+    <div class="header">
+        JARVIS AI Assistant
+    </div>
+
+    <div id="chat-box">
+
+        <div class="bot">
+            <div class="bubble">
+                Hello Boss 👋
+            </div>
+        </div>
+
+    </div>
+
+    <div class="input-area">
+
+        <input
+            type="text"
+            id="message"
+            placeholder="Type message..."
+            onkeypress="handleKey(event)"
+        >
+
+        <button onclick="sendMessage()">
+            Send
+        </button>
+
+        <button onclick="startListening()">
+            🎤
+        </button>
+
+    </div>
+
+</div>
+
+<script>
+
+function handleKey(event){
+
+    if(event.key === "Enter"){
+        sendMessage();
+    }
+
+}
+
+function newChat(){
+
+    document.getElementById("chat-box").innerHTML = `
+        <div class="bot">
+            <div class="bubble">
+                New Chat Started 🚀
+            </div>
+        </div>
+    `;
+
+}
+
+async function sendMessage(){
+
+    let input = document.getElementById("message");
+
+    let message = input.value;
+
+    if(message.trim() === ""){
+        return;
+    }
+
+    let chatBox = document.getElementById("chat-box");
+
+    // USER MESSAGE
+
+    chatBox.innerHTML += `
+        <div class="user">
+            <div class="bubble">
+                ${message}
+            </div>
+        </div>
+    `;
+
+    input.value = "";
+
+    // TYPING EFFECT
+
+    chatBox.innerHTML += `
+        <div class="bot" id="typing">
+            <div class="bubble">
+                JARVIS is typing...
+            </div>
+        </div>
+    `;
+
+    chatBox.scrollTop = chatBox.scrollHeight;
+
+    // SEND TO FLASK
+
+    let response = await fetch("/get",{
+
+        method:"POST",
+
+        headers:{
+            "Content-Type":"application/json"
+        },
+
+        body:JSON.stringify({
+            message:message
+        })
+
+    });
+
+    let data = await response.json();
+
+    // REMOVE TYPING
+
+    document.getElementById("typing").remove();
+
+    // BOT RESPONSE
+
+    chatBox.innerHTML += `
+        <div class="bot">
+            <div class="bubble">
+                ${data.reply}
+            </div>
+        </div>
+    `;
+
+    // CHAT HISTORY
+
+    let historyDiv = document.getElementById("history");
+
+    historyDiv.innerHTML = "";
+
+    data.history.forEach(chat => {
+
+        historyDiv.innerHTML += `
+            <div class="chat-item">
+                ${chat.user}
+            </div>
+        `;
+
+    });
+
+    chatBox.scrollTop = chatBox.scrollHeight;
+
+}
+
+function startListening(){
+
+    let recognition =
+        new webkitSpeechRecognition();
+
+    recognition.lang = "en-US";
+
+    recognition.start();
+
+    recognition.onresult = function(event){
+
+        let text =
+            event.results[0][0].transcript;
+
+        document.getElementById("message").value = text;
+
+        sendMessage();
+
+    };
+
+}
+
+</script>
+
+</body>
+</html>
